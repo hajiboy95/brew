@@ -395,6 +395,9 @@ module Homebrew
           return []
         end
 
+        require "utils/analytics"
+        Utils::Analytics.report_formula_installs(formula_installers)
+
         installed_formulae = T.let([], T::Array[Formula])
         formula_installers.each do |fi|
           formula = fi.formula
@@ -403,8 +406,6 @@ module Homebrew
           Cleanup.install_formula_clean!(formula) if cleanup
           installed_formulae << formula
         rescue BuildError => e
-          require "utils/analytics"
-
           Utils::Analytics.report_build_error(e)
           e.dump(verbose:)
           puts
