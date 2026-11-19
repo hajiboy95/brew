@@ -840,7 +840,7 @@ RSpec.describe FormulaInstaller do
       # rubocop:enable RSpec/DescribedClass
 
       allow(dependency_formula).to receive_messages(
-        linked_keg:                Pathname("/tmp/nonexistent-linked-keg"),
+        linked_keg:                instance_double(Pathname, directory?: false),
         latest_version_installed?: false,
         tap:                       nil,
         any_version_installed?:    false,
@@ -877,7 +877,7 @@ RSpec.describe FormulaInstaller do
 
     before do
       allow(dependency_formula).to receive_messages(
-        linked_keg:                Pathname("/tmp/nonexistent-linked-keg"),
+        linked_keg:                instance_double(Pathname, directory?: false),
         latest_version_installed?: false,
         tap:                       nil,
         any_version_installed?:    true,
@@ -946,7 +946,7 @@ RSpec.describe FormulaInstaller do
     before do
       allow(dependency_formula).to receive_messages(
         tap:                       nil,
-        linked_keg:                Pathname("/tmp/nonexistent-linked-keg"),
+        linked_keg:                instance_double(Pathname, directory?: false),
         latest_version_installed?: false,
         any_version_installed?:    false,
       )
