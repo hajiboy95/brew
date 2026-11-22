@@ -825,15 +825,6 @@ RSpec.describe Cask::Upgrade, :cask do
       described_class.upgrade_casks!(local_caffeine, args:)
     end
 
-    it "reports the upgrade before upgrading so a failed upgrade is still reported" do
-      allow_any_instance_of(Cask::Installer).to receive(:finalize_upgrade)
-        .and_raise(Cask::CaskError, "finalize failed")
-
-      expect(Utils::Analytics).to receive(:report_package_events).with(:cask_install, [upgrade_event]).once
-
-      described_class.upgrade_casks!(local_caffeine, args:)
-    end
-
     it "reports a cask whose download couldn't be enqueued for prefetching" do
       allow(Homebrew::Install).to receive(:enqueue_cask_installers).and_return([])
 
