@@ -811,7 +811,7 @@ RSpec.describe Cask::Upgrade, :cask do
     end
 
     it "reports a successful upgrade as one cask install" do
-      expect(Utils::Analytics).to receive(:report_package_event)
+      expect(Utils::Analytics).to receive(:report_package_events)
         .with(:cask_install, [upgrade_event])
         .once
       described_class.upgrade_casks!(local_caffeine, args:)
