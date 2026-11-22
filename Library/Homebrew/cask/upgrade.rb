@@ -312,6 +312,8 @@ module Cask
 
       upgradable_casks.each_with_index do |(old_cask, new_cask), index|
         new_cask_installer = new_cask_installers.fetch(index)
+        # A fallback's prelude ran before any upgrade, which may have since installed a conflicting cask.
+        new_cask_installer&.check_conflicts if fallback_cask_installers.include?(new_cask_installer)
         upgrade_cask(
           old_cask, new_cask,
           binaries:, force:, skip_cask_deps:, verbose:,

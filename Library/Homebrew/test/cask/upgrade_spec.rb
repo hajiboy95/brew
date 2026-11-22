@@ -843,6 +843,17 @@ RSpec.describe Cask::Upgrade, :cask do
     end
   end
 
+  it "rechecks conflicts right before each upgrade after downloading the casks" do
+    Cask::Installer.new(Cask::CaskLoader.from_path(cask_path("outdated/local-caffeine"))).install
+    calls = []
+    allow_any_instance_of(Cask::Installer).to receive(:check_conflicts) { calls << :check_conflicts }
+    allow(described_class).to receive(:upgrade_cask) { calls << :upgrade_cask }
+
+    described_class.upgrade_casks!(local_caffeine, args:, skip_prefetch: true)
+
+    expect(calls).to eq([:check_conflicts, :check_conflicts, :upgrade_cask])
+  end
+
   context "when quarantine support is unavailable" do
     before do
       Cask::Installer.new(Cask::CaskLoader.from_path(cask_path("outdated/local-caffeine"))).install
