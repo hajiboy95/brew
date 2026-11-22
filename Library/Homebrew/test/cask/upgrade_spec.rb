@@ -841,6 +841,21 @@ RSpec.describe Cask::Upgrade, :cask do
 
       expect(described_class.upgrade_casks!(local_caffeine, args:)).to be(true)
     end
+
+    it "reports a cask whose fallback download only succeeds on retry" do
+      download_attempts = 0
+      allow_any_instance_of(Cask::Installer).to receive(:download).and_wrap_original do |original, *args, **kwargs|
+        download_attempts += 1
+        raise Cask::CaskError, "download failed" if download_attempts == 1
+
+        original.call(*args, **kwargs)
+      end
+      allow(Utils::Analytics).to receive(:report_package_events)
+
+      expect(Utils::Analytics).to receive(:report_package_events).with(:cask_install, [upgrade_event]).once
+
+      described_class.upgrade_casks!(local_caffeine, args:, skip_prefetch: true)
+    end
   end
 
   it "rechecks conflicts right before each upgrade after downloading the casks" do

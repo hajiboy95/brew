@@ -303,7 +303,7 @@ module Cask
             fallback_cask_installers << installer
             installer
           rescue
-            # Upgrading it fails with this error and reports it.
+            # `upgrade_cask` retries it and reports it if that download succeeds.
             nil
           end
       end
@@ -463,6 +463,7 @@ module Cask
 
       new_cask.config = new_cask.default_config.merge(old_config)
 
+      built_fallback_installer = new_cask_installer.nil?
       new_cask_installer ||= fallback_installer(old_cask, new_cask, binaries:, force:, require_sha:,
                                                 skip_cask_deps:, verbose:, download_queue:)
       raise CaskError, "Download failed for #{new_cask}." if new_cask_installer.download_failed?
@@ -509,6 +510,8 @@ module Cask
 
         # Install the new cask
         new_cask_installer.stage
+        # Staging downloaded (and verified) a fallback built here, which nothing has reported yet.
+        ::Utils::Analytics.report_cask_installs([new_cask_installer]) if built_fallback_installer
 
         new_cask_installer.install_artifacts(predecessor: old_cask)
         new_artifacts_installed = true
