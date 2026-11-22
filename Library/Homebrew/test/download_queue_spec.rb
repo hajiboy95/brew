@@ -43,6 +43,12 @@ RSpec.describe Homebrew::DownloadQueue do
     expect(Homebrew).to have_failed
   end
 
+  it "reports whether a queued download failed without waiting for the whole queue" do
+    download_queue.enqueue(downloadable)
+
+    expect(download_queue.downloaded_and_verified?(downloadable)).to be(false)
+  end
+
   it "defers multi-line failure details on a TTY until the in-place redraw has finished" do
     allow($stdout).to receive(:tty?).and_return(true)
     ENV["TERM"] = "xterm-256color"

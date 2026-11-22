@@ -862,6 +862,32 @@ RSpec.describe FormulaInstaller do
     end
   end
 
+  describe "#install_fetch_deps" do
+    it "reports an implicit dependency once its download is verified, before installing it" do
+      installer = described_class.new(Testball.new)
+      dependency = instance_double(Dependency, implicit?: true, to_formula: instance_double(Formula))
+      allow(installer).to receive_messages(expand_dependencies: [dependency], expand_requirements: {},
+                                           pour_bottle?: false)
+      allow(installer).to receive(:check_requirements)
+      installer.compute_dependencies
+      dependency_installer = instance_double(described_class, downloadable: instance_double(Downloadable))
+      installer.download_queue = instance_double(Homebrew::DownloadQueue)
+      allow(installer.download_queue).to receive(:downloaded_and_verified?)
+        .with(dependency_installer.downloadable)
+        .and_return(true)
+      allow(installer).to receive(:fetch_dependencies)
+      allow(installer).to receive(:dependency_installer).with(dependency, dependency.to_formula)
+                                                        .and_return(dependency_installer)
+      calls = []
+      allow(Utils::Analytics).to receive(:report_formula_installs).with([dependency_installer]) { calls << :report }
+      allow(installer).to receive(:install_dependency).with(dependency) { calls << :install }
+
+      installer.install_fetch_deps
+
+      expect(calls).to eq([:report, :install])
+    end
+  end
+
   describe "#install_dependency" do
     let(:dependency_formula) do
       formula "outdated-dependency" do

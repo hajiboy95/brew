@@ -536,6 +536,17 @@ class FormulaInstaller # rubocop:disable Metrics/ClassLength
       next false unless dep.implicit?
 
       fetch_dependencies
+      # It's installed before the batch report could see it, so report it once its download is verified.
+      begin
+        fi = dependency_installer(dep, dep.to_formula)
+        if download_queue.downloaded_and_verified?(fi.downloadable)
+          require "utils/analytics"
+          Utils::Analytics.report_formula_installs([fi])
+        end
+      rescue
+        # Installing it reports the error instead.
+        nil
+      end
       install_dependency(dep)
       true
     end

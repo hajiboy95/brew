@@ -342,6 +342,16 @@ module Homebrew
     sig { returns(T::Array[Downloadable]) }
     attr_reader :failed_downloads
 
+    # Waits for just this download and returns whether it downloaded and passed its checksum
+    # verification. A failure is still reported once, by `fetch`.
+    sig { params(downloadable: Downloadable).returns(T::Boolean) }
+    def downloaded_and_verified?(downloadable)
+      download = @downloads_by_location[downloadable.cached_download]
+      return downloadable.downloaded_and_valid? if download.nil?
+
+      download.wait.fulfilled?
+    end
+
     sig { params(message: String).void }
     def stdout_print_and_flush_if_tty(message)
       stdout_print_and_flush(message) if tty_with_cursor_move_support?
