@@ -169,7 +169,9 @@ module Utils
 
         packages = formula_installers.flat_map do |formula_installer|
           deps = begin
-            formula_installer.ignore_deps? ? [] : formula_installer.compute_dependencies
+            # Recompute like installing does: the list cached while fetching can include
+            # dependencies that installing another formula has installed since.
+            formula_installer.ignore_deps? ? [] : formula_installer.compute_dependencies(use_cache: false)
           rescue
             # Installing will fail with this error so there are no dependencies to report.
             []
