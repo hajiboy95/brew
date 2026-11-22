@@ -1126,6 +1126,27 @@ RSpec.describe Cask::Installer, :cask do
 
       installer.satisfy_cask_and_formula_dependencies
     end
+
+    it "downloads cask dependencies that weren't prefetched before reporting them" do
+      installer = described_class.new(Cask::CaskLoader.from_path(cask_path("local-caffeine")))
+      dependency = Cask::Cask.new("cask-dependency")
+      dependency_installer = instance_double(described_class, cask: dependency, download_failed?: false,
+                                                              prelude: nil, install: nil)
+      allow(installer).to receive_messages(cask_and_formula_dependencies:         [dependency],
+                                           missing_cask_and_formula_dependencies: [dependency],
+                                           dependency_installers:                 [[dependency_installer], []])
+      allow(dependency).to receive(:installed?).and_return(false)
+      downloaded = false
+      allow(dependency_installer).to receive(:download) { downloaded = true }
+      reported_after_download = T.let(false, T::Boolean)
+      allow(Utils::Analytics).to receive(:report_cask_installs).with([dependency_installer]) do
+        reported_after_download = downloaded
+      end
+
+      installer.satisfy_cask_and_formula_dependencies
+
+      expect(reported_after_download).to be(true)
+    end
   end
 
   describe "#load_installed_caskfile!" do

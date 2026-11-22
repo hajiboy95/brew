@@ -299,7 +299,7 @@ module Homebrew
             download_queue.shutdown
           end
 
-          Utils::Analytics.report_formula_installs(reinstall_contexts.map(&:formula_installer) & formulae_installers)
+          Utils::Analytics.report_formula_installs(formulae_installers + dependent_formulae_installers)
 
           # Reinstall everything that did download, rather than aborting the
           # whole run; the failures above still exit nonzero at the end.
@@ -334,6 +334,7 @@ module Homebrew
 
         reinstalled_casks = T.let([], T::Array[Cask::Cask])
         if casks.any?
+          Utils::Analytics.report_cask_installs(prefetched_cask_installers) if casks_prefetched
           begin
             reinstalled_casks = Cask::Reinstall.reinstall_casks(
               *casks,

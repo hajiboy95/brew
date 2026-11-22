@@ -396,8 +396,6 @@ module Homebrew
           return []
         end
 
-        Utils::Analytics.report_formula_installs(formula_installers)
-
         installed_formulae = T.let([], T::Array[Formula])
         formula_installers.each do |fi|
           formula = fi.formula

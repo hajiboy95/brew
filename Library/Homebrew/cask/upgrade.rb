@@ -292,6 +292,7 @@ module Cask
 
       # Report every cask once it has been downloaded and verified. A cask whose prefetch couldn't be
       # enqueued gets the installer `upgrade_cask` would fall back to and is downloaded now instead.
+      fallback_cask_installers = T.let([], T::Array[Installer])
       new_cask_installers = upgradable_casks.map do |(old_cask, new_cask)|
         prefetched_cask_installers.find { |installer| installer.cask.equal?(new_cask) } ||
           begin
@@ -299,13 +300,15 @@ module Cask
                                            skip_cask_deps:, verbose:, download_queue:)
             installer.prelude
             installer.download
+            fallback_cask_installers << installer
             installer
           rescue
             # Upgrading it fails with this error and reports it.
             nil
           end
       end
-      ::Utils::Analytics.report_cask_installs(new_cask_installers.compact)
+      # Callers that prefetched the casks have already reported them.
+      ::Utils::Analytics.report_cask_installs(skip_prefetch ? fallback_cask_installers : new_cask_installers.compact)
 
       upgradable_casks.each_with_index do |(old_cask, new_cask), index|
         new_cask_installer = new_cask_installers.fetch(index)

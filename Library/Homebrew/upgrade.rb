@@ -214,8 +214,9 @@ module Homebrew
         end
         dependency_summary = { install: [], upgrade: [] } if dry_run
 
+        # Callers that prefetched the formulae have already reported them.
         require "utils/analytics"
-        Utils::Analytics.report_formula_installs(valid_formula_installers) unless dry_run
+        Utils::Analytics.report_formula_installs(valid_formula_installers) if fetch && !dry_run
 
         upgraded_formula_installers = valid_formula_installers.select do |fi|
           upgraded = upgrade_formula(fi, dry_run:, verbose:, skip_formula_names:, dependency_summary:)

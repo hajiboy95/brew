@@ -375,6 +375,8 @@ module Homebrew
           formulae_installer = fetched.formula_installers
           dependent_formulae_installer = fetched.dependent_formula_installers
           prefetched_cask_installers = fetched.cask_installers
+          Utils::Analytics.report_formula_installs(formulae_installer + dependent_formulae_installer)
+          Utils::Analytics.report_cask_installs(prefetched_cask_installers)
         end
         shared_download_queue&.shutdown
 
@@ -539,10 +541,6 @@ module Homebrew
               installed_on_request:,
             )
         end
-
-        # Only the prefetched casks have been downloaded and verified by now.
-        require "utils/analytics"
-        Utils::Analytics.report_cask_installs(new_cask_installers & prefetched_cask_installers)
 
         new_cask_installers.each do |installer|
           installer.install

@@ -58,6 +58,42 @@ RSpec.describe Homebrew::Upgrade do
         .to eq([formula_installer])
     end
 
+    it "reports the formulae it fetched" do
+      formula_installer = instance_double(FormulaInstaller, formula: Testball.new)
+      allow(Homebrew::Install).to receive(:fetch_formulae).with([formula_installer]).and_return([formula_installer])
+      allow(described_class).to receive(:upgrade_formula).and_return(true)
+
+      expect(Utils::Analytics).to receive(:report_formula_installs).with([formula_installer])
+
+      described_class.upgrade_formulae([formula_installer], cleanup: false)
+    end
+
+    it "does not report formulae its caller prefetched" do
+      formula_installer = instance_double(FormulaInstaller, formula: Testball.new)
+      allow(described_class).to receive(:upgrade_formula).and_return(true)
+
+      expect(Utils::Analytics).not_to receive(:report_formula_installs)
+
+      described_class.upgrade_formulae([formula_installer], fetch: false, cleanup: false)
+    end
+
+    it "still upgrades and returns the formulae when curl can't be launched to send analytics" do
+      # Send analytics for real but make launching `curl` fail as `spawn` does when it can't run it.
+      ENV.delete("HOMEBREW_NO_ANALYTICS_THIS_RUN")
+      ENV.delete("HOMEBREW_NO_ANALYTICS")
+      ENV.delete("HOMEBREW_ANALYTICS_DEBUG")
+      allow(Utils::Curl).to receive(:curl_executable).and_return("/usr/bin/curl")
+      allow(Utils::Analytics).to receive(:spawn).and_raise(Errno::ENOENT, "/usr/bin/curl")
+      formula_installer = instance_double(FormulaInstaller, formula: Testball.new)
+      allow(Homebrew::Install).to receive(:fetch_formulae).with([formula_installer]).and_return([formula_installer])
+      allow(Utils::Analytics).to receive(:report_formula_installs) do
+        Utils::Analytics.write_influx(["formula_install,on_request=true package=\"testball\" 1"])
+      end
+      allow(described_class).to receive(:upgrade_formula).and_return(true)
+
+      expect(described_class.upgrade_formulae([formula_installer], cleanup: false)).to eq([formula_installer])
+    end
+
     it "groups dependencies across formula upgrades" do
       fresh = formula("fresh-dependency") do
         T.bind(self, T.class_of(Formula))

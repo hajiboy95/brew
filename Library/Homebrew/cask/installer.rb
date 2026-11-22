@@ -522,6 +522,13 @@ module Cask
       end
 
       missing_cask_installers = cask_installers.reject { |installer| installer.cask.installed? }
+      # Without a prefetch, download (and verify) them before reporting; installing reuses the downloads.
+      unless @dependencies_enqueued
+        missing_cask_installers.each do |installer|
+          installer.prelude
+          installer.download
+        end
+      end
       ::Utils::Analytics.report_cask_installs(missing_cask_installers)
       missing_cask_installers.each(&:install)
       return if formula_installers.blank?

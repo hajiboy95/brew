@@ -452,23 +452,6 @@ RSpec.describe Homebrew::Install do
       expect(described_class.install_formulae([formula_installer], cleanup: false)).to eq([formula])
     end
 
-    it "reports the formulae it installs before installing any of them" do
-      first_fi = instance_double(FormulaInstaller, formula: formula("first") do
-        T.bind(self, T.class_of(Formula))
-        url "foo-1.0"
-      end)
-      second_fi = instance_double(FormulaInstaller, formula: formula("second") do
-        T.bind(self, T.class_of(Formula))
-        url "foo-1.0"
-      end)
-
-      expect(Utils::Analytics).to receive(:report_formula_installs).with([first_fi, second_fi]).ordered
-      expect(described_class).to receive(:install_formula).with(first_fi, upgrade: false).ordered
-      expect(described_class).to receive(:install_formula).with(second_fi, upgrade: false).ordered
-
-      described_class.install_formulae([first_fi, second_fi], cleanup: false)
-    end
-
     it "skips a formula whose install raises and continues with the rest" do
       bad_fi = instance_double(FormulaInstaller, formula: formula("bad-bottle") do
         T.bind(self, T.class_of(Formula))
@@ -523,34 +506,14 @@ RSpec.describe Homebrew::Install do
       expect { described_class.install_formulae([bad_fi]) }.to output("\n").to_stdout
     end
 
-    # Send analytics for real but make launching `curl` fail as `spawn` does when it can't run it.
-    sig { void }
-    def stub_curl_launch_failure
+    it "still handles the original build error when curl can't be launched to send analytics" do
+      # Send analytics for real but make launching `curl` fail as `spawn` does when it can't run it.
       ENV.delete("HOMEBREW_NO_ANALYTICS_THIS_RUN")
       ENV.delete("HOMEBREW_NO_ANALYTICS")
       ENV.delete("HOMEBREW_ANALYTICS_DEBUG")
       allow(Utils::Curl).to receive(:curl_executable).and_return("/usr/bin/curl")
       allow(Utils::Analytics).to receive(:spawn).and_raise(Errno::ENOENT, "/usr/bin/curl")
       allow(Homebrew::Cleanup).to receive(:install_formula_clean!)
-    end
-
-    it "still installs and returns the formulae when curl can't be launched to send analytics" do
-      stub_curl_launch_failure
-      formula = formula("analytics-transport") do
-        T.bind(self, T.class_of(Formula))
-        url "foo-1.0"
-      end
-      formula_installer = instance_double(FormulaInstaller, formula:)
-      allow(Utils::Analytics).to receive(:report_formula_installs) do
-        Utils::Analytics.write_influx(["formula_install,on_request=true package=\"analytics-transport\" 1"])
-      end
-      allow(described_class).to receive(:install_formula).with(formula_installer, upgrade: false)
-
-      expect(described_class.install_formulae([formula_installer])).to eq([formula])
-    end
-
-    it "still handles the original build error when curl can't be launched to send analytics" do
-      stub_curl_launch_failure
       bad_formula = formula("bad-build") do
         T.bind(self, T.class_of(Formula))
         url "foo-1.0"
@@ -561,7 +524,6 @@ RSpec.describe Homebrew::Install do
         url "foo-1.0"
       end)
       error = BuildError.new(bad_formula, "make", ["install"], {})
-      allow(Utils::Analytics).to receive(:report_formula_installs)
       allow(Utils::Analytics).to receive(:report_build_error).with(error) do
         Utils::Analytics.write_influx(["build_error,on_request=false package=\"bad-build\" 1"])
       end
