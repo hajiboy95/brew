@@ -63,10 +63,9 @@ module Utils
       sig {
         params(measurement: Symbol,
                tags:        T::Hash[Symbol, T.any(T::Boolean, String)],
-               fields:      T::Hash[Symbol, T.any(T::Boolean, String)],
-               index:       Integer).returns(String)
+               fields:      T::Hash[Symbol, T.any(T::Boolean, String)]).returns(String)
       }
-      def influx_line(measurement, tags, fields, index: 0)
+      def influx_line(measurement, tags, fields)
         # Tags are always implicitly strings and must have low cardinality.
         tags_string = tags.map do |k, v|
           escaped_value = v.to_s.gsub(/[ ,=]/) { |char| "\\#{char}" }
@@ -78,9 +77,11 @@ module Utils
                               .map { |k, v| %Q(#{k}="#{v}") }
                               .join(",")
 
-        # InfluxDB merges points with the same tags and timestamp, so keep second precision
-        # but give each event in a request its own nanosecond (its `index`) within that second.
-        "#{measurement},#{tags_string} #{fields_string} #{(Time.now.to_i * 1_000_000_000) + index}"
+        # InfluxDB merges points with the same tags and timestamp, so keep second precision but give
+        # each event its own nanosecond within that second, even across separate reports.
+        timestamp = [Time.now.to_i * 1_000_000_000, cache.fetch(:last_influx_timestamp, -1) + 1].max
+        cache[:last_influx_timestamp] = timestamp
+        "#{measurement},#{tags_string} #{fields_string} #{timestamp}"
       end
 
       sig { params(lines: T::Array[String]).void }
@@ -142,7 +143,7 @@ module Utils
       def report_package_events(measurement, packages)
         return if not_this_run? || disabled?
 
-        lines = packages.each_with_index.map do |package, index|
+        lines = packages.map do |package|
           # ensure options are removed (by `.compact` below) if empty
           options = package[:options].presence
 
@@ -156,7 +157,7 @@ module Utils
             options:,
           ).compact
 
-          influx_line(measurement, tags, fields, index:)
+          influx_line(measurement, tags, fields)
         end
         write_influx(lines)
       end

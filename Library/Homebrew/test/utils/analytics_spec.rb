@@ -165,6 +165,27 @@ RSpec.describe Utils::Analytics do
       ])
     end
 
+    it "gives packages in separate reports within the same second different timestamps" do
+      ENV.delete("HOMEBREW_NO_ANALYTICS_THIS_RUN")
+      ENV.delete("HOMEBREW_NO_ANALYTICS")
+      allow(Time).to receive(:now).and_return(Time.at(123))
+      allow(described_class).to receive_messages(default_package_tags: { ci: false }, default_package_fields: {})
+      lines = []
+      allow(described_class).to receive(:write_influx) { |report_lines| lines.concat(report_lines) }
+
+      described_class.report_package_events(:cask_install, [
+        { package_name: "foo", tap_name: "homebrew/cask", on_request: true, options: "" },
+      ])
+      described_class.report_package_events(:cask_install, [
+        { package_name: "bar", tap_name: "homebrew/cask", on_request: true, options: "" },
+      ])
+
+      expect(lines).to eq([
+        "cask_install,ci=false,on_request=true package=\"foo\",tap_name=\"homebrew/cask\" 123000000000",
+        "cask_install,ci=false,on_request=true package=\"bar\",tap_name=\"homebrew/cask\" 123000000001",
+      ])
+    end
+
     it "does not report when analytics are disabled" do
       ENV["HOMEBREW_NO_ANALYTICS"] = "1"
       expect(described_class).not_to receive(:write_influx)
