@@ -18,6 +18,7 @@ require "utils/topological_hash"
 require "install/check"
 require "api/source_download"
 require "attestation"
+require "utils/analytics"
 
 module Homebrew
   # Helper module for performing (pre-)install checks.
@@ -395,7 +396,6 @@ module Homebrew
           return []
         end
 
-        require "utils/analytics"
         Utils::Analytics.report_formula_installs(formula_installers)
 
         installed_formulae = T.let([], T::Array[Formula])

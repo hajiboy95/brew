@@ -522,6 +522,55 @@ RSpec.describe Homebrew::Install do
 
       expect { described_class.install_formulae([bad_fi]) }.to output("\n").to_stdout
     end
+
+    # Send analytics for real but make launching `curl` fail as `spawn` does when it can't run it.
+    sig { void }
+    def stub_curl_launch_failure
+      ENV.delete("HOMEBREW_NO_ANALYTICS_THIS_RUN")
+      ENV.delete("HOMEBREW_NO_ANALYTICS")
+      ENV.delete("HOMEBREW_ANALYTICS_DEBUG")
+      allow(Utils::Curl).to receive(:curl_executable).and_return("/usr/bin/curl")
+      allow(Utils::Analytics).to receive(:spawn).and_raise(Errno::ENOENT, "/usr/bin/curl")
+      allow(Homebrew::Cleanup).to receive(:install_formula_clean!)
+    end
+
+    it "still installs and returns the formulae when curl can't be launched to send analytics" do
+      stub_curl_launch_failure
+      formula = formula("analytics-transport") do
+        T.bind(self, T.class_of(Formula))
+        url "foo-1.0"
+      end
+      formula_installer = instance_double(FormulaInstaller, formula:)
+      allow(Utils::Analytics).to receive(:report_formula_installs) do
+        Utils::Analytics.write_influx(["formula_install,on_request=true package=\"analytics-transport\" 1"])
+      end
+      allow(described_class).to receive(:install_formula).with(formula_installer, upgrade: false)
+
+      expect(described_class.install_formulae([formula_installer])).to eq([formula])
+    end
+
+    it "still handles the original build error when curl can't be launched to send analytics" do
+      stub_curl_launch_failure
+      bad_formula = formula("bad-build") do
+        T.bind(self, T.class_of(Formula))
+        url "foo-1.0"
+      end
+      bad_fi = instance_double(FormulaInstaller, formula: bad_formula)
+      good_fi = instance_double(FormulaInstaller, formula: formula("good-build") do
+        T.bind(self, T.class_of(Formula))
+        url "foo-1.0"
+      end)
+      error = BuildError.new(bad_formula, "make", ["install"], {})
+      allow(Utils::Analytics).to receive(:report_formula_installs)
+      allow(Utils::Analytics).to receive(:report_build_error).with(error) do
+        Utils::Analytics.write_influx(["build_error,on_request=false package=\"bad-build\" 1"])
+      end
+      allow(described_class).to receive(:install_formula).with(bad_fi, upgrade: false).and_raise(error)
+      allow(described_class).to receive(:install_formula).with(good_fi, upgrade: false)
+      allow(error).to receive(:dump).with(verbose: false)
+
+      expect(described_class.install_formulae([bad_fi, good_fi])).to eq([good_fi.formula])
+    end
   end
 
   describe "::finish_installation" do

@@ -123,6 +123,10 @@ module Utils
           pid = spawn curl, *args, url, out: File::NULL, err: File::NULL
           Process.detach(pid)
         end
+      rescue => e
+        # Failing to send analytics (e.g. `spawn` raising because `curl` can't be launched) must not
+        # stop what's being reported or replace an exception that's being handled, like a `BuildError`.
+        odebug "Failed to send analytics: #{e}", always_display: ENV["HOMEBREW_ANALYTICS_DEBUG"].present?
       end
 
       sig {

@@ -427,6 +427,23 @@ RSpec.describe Utils::Analytics do
 
       described_class.deferred_curl("https://example.com", ["--max-time", "3"])
     end
+
+    it "does not raise when curl can't be launched" do
+      ENV.delete("HOMEBREW_ANALYTICS_DEBUG")
+      allow(Utils::Curl).to receive(:curl_executable).and_return("/usr/bin/curl")
+      allow(described_class).to receive(:spawn).and_raise(Errno::ENOENT, "/usr/bin/curl")
+
+      expect { described_class.deferred_curl("https://example.com", ["--max-time", "3"]) }.not_to raise_error
+    end
+
+    it "does not raise when curl fails in debug mode" do
+      ENV["HOMEBREW_ANALYTICS_DEBUG"] = "1"
+      allow(Utils::Curl).to receive(:curl_executable).and_return("/usr/bin/curl")
+      allow(Utils).to receive(:safe_popen_read).and_raise(Errno::ENOENT, "/usr/bin/curl")
+
+      expect { described_class.deferred_curl("https://example.com", ["--max-time", "3"]) }
+        .to output(/Failed to send analytics/).to_stderr
+    end
   end
 
   describe "::report_build_error" do
