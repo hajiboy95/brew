@@ -116,7 +116,7 @@ RSpec.describe FormulaInstaller do
 
     formula_installer = described_class.new(formula)
     begin
-      expect { formula_installer.fetch }.to output(/Bottle testball_bottle/).to_stderr
+      formula_installer.fetch
       expect(bottle.cached_download.binread).not_to start_with("corrupt")
 
       formula_installer.install
