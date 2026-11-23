@@ -175,7 +175,7 @@ RSpec.describe Utils::Analytics do
     def formula_installer(name, dependencies: [])
       installer = installer_for(name, on_request: true)
       deps = dependencies.map do |dependency_name|
-        dep = instance_double(Dependency, to_formula: instance_double(Formula))
+        dep = instance_double(Dependency, to_formula: instance_double(Formula, name: dependency_name))
         allow(installer).to receive(:dependency_installer).with(dep, dep.to_formula)
                                                           .and_return(installer_for(dependency_name))
         dep
@@ -198,6 +198,17 @@ RSpec.describe Utils::Analytics do
       described_class.report_formula_installs([
         formula_installer("foo", dependencies: ["shared"]),
         formula_installer("bar", dependencies: ["shared", "baz"]),
+      ])
+    end
+
+    it "keeps the details of a requested formula that another requested formula depends on" do
+      expect(described_class).to receive(:report_package_events).with(:formula_install, [
+        package_event("foo", on_request: true), package_event("bar", on_request: true)
+      ])
+
+      described_class.report_formula_installs([
+        formula_installer("foo", dependencies: ["bar"]),
+        formula_installer("bar"),
       ])
     end
 

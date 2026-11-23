@@ -168,6 +168,8 @@ module Utils
       def report_formula_installs(formula_installers)
         return if not_this_run? || disabled?
 
+        # A formula requested in its own right is reported with its own details, not as a dependency.
+        requested_names = formula_installers.reject(&:only_deps?).map { |fi| fi.formula.name }
         packages = formula_installers.flat_map do |formula_installer|
           deps = begin
             # Recompute like installing does: the list cached while fetching can include
@@ -180,7 +182,10 @@ module Utils
           # Analytics must not stop the install, so leave out a package whose details can't be read
           # (e.g. from a corrupt install receipt): installing it reports the error instead.
           installers = deps.filter_map do |dep|
-            formula_installer.dependency_installer(dep, dep.to_formula)
+            dep_formula = dep.to_formula
+            next if requested_names.include?(dep_formula.name)
+
+            formula_installer.dependency_installer(dep, dep_formula)
           rescue
             nil
           end
