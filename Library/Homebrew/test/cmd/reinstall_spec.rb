@@ -68,7 +68,7 @@ RSpec.describe Homebrew::Cmd::Reinstall do
         require_sha:     false,
         skip_cask_deps:  false,
         zap:             false,
-        skip_prefetch:   false,
+        skip_prefetch:   true,
         download_queue:  nil,
         cask_installers: nil,
       )
