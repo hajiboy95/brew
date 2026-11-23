@@ -66,9 +66,17 @@ module Homebrew
 
           download.clear_cache if force
           if !force && downloadable.downloaded_and_valid?
-            check_bottle_attestation(downloadable, check_attestation:)
-            create_symlinks_for_shared_download(cached_location)
-            next cached_location
+            begin
+              # `downloaded_and_valid?` can trust a bottle from its file name alone, so check
+              # its contents before reusing it.
+              downloadable.verify_download_integrity(cached_location)
+              check_bottle_attestation(downloadable, check_attestation:)
+              create_symlinks_for_shared_download(cached_location)
+              next cached_location
+            rescue ChecksumMismatchError
+              # Download it again instead.
+              FileUtils.rm_f(cached_location)
+            end
           end
 
           downloaded_path = download.fetch(quiet:)

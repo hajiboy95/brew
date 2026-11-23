@@ -18,6 +18,7 @@ RSpec.describe Homebrew::DownloadQueue do
       download_queue_name:             "testball",
       download_queue_type:             "Bottle",
       staged_path_from_download_queue: nil,
+      verify_download_integrity:       nil,
     )
   end
   let(:download_error) { DownloadError.new(downloadable, RuntimeError.new("network blew up")) }
@@ -47,6 +48,24 @@ RSpec.describe Homebrew::DownloadQueue do
     download_queue.enqueue(downloadable)
 
     expect(download_queue.downloaded_and_verified?(downloadable)).to be(false)
+  end
+
+  it "downloads a cached file again instead of reusing it when its contents fail verification" do
+    cached_download.dirname.mkpath
+    cached_download.write("corrupt")
+    # Like an immutable bottle whose cached file name matches its digest.
+    allow(downloadable).to receive(:downloaded_and_valid?).and_return(true)
+    allow(downloadable).to receive(:verify_download_integrity).with(cached_download)
+                                                              .and_raise(ChecksumMismatchError.new(
+                                                                           cached_download,
+                                                                           Checksum.new("a" * 64),
+                                                                           Checksum.new("b" * 64),
+                                                                         ))
+
+    expect(retryable_download).to receive(:fetch).and_return(cached_download)
+
+    download_queue.enqueue(downloadable)
+    download_queue.fetch
   end
 
   it "defers multi-line failure details on a TTY until the in-place redraw has finished" do
@@ -81,13 +100,14 @@ RSpec.describe Homebrew::DownloadQueue do
   it "fetches only downloads of the given class and keeps others queued unreported" do
     manifest = instance_double(
       Resource::BottleManifest,
-      cached_download:        HOMEBREW_CACHE/"downloads/testball_manifest.json",
-      checksum:               nil,
-      downloaded_and_valid?:  true,
-      downloader:             nil,
-      download_queue_message: "Bottle Manifest testball",
-      download_queue_name:    "testball",
-      download_queue_type:    "Bottle Manifest",
+      cached_download:           HOMEBREW_CACHE/"downloads/testball_manifest.json",
+      checksum:                  nil,
+      downloaded_and_valid?:     true,
+      downloader:                nil,
+      download_queue_message:    "Bottle Manifest testball",
+      download_queue_name:       "testball",
+      download_queue_type:       "Bottle Manifest",
+      verify_download_integrity: nil,
     )
     allow(manifest).to receive(:is_a?) { |klass| klass == Resource::BottleManifest }
 
@@ -566,12 +586,13 @@ RSpec.describe Homebrew::DownloadQueue do
     bottle = Bottle.allocate
     allow(bottle).to receive_messages(
       cached_download:,
-      checksum:               nil,
-      downloaded_and_valid?:  true,
-      downloader:             nil,
-      download_queue_message: "Bottle testball",
-      download_queue_name:    "testball",
-      download_queue_type:    "Bottle",
+      checksum:                  nil,
+      downloaded_and_valid?:     true,
+      downloader:                nil,
+      download_queue_message:    "Bottle testball",
+      download_queue_name:       "testball",
+      download_queue_type:       "Bottle",
+      verify_download_integrity: nil,
     )
 
     expect(Utils::Attestation).to receive(:check_attestation).with(bottle, quiet: true)
