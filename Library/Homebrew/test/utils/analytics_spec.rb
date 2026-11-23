@@ -135,8 +135,8 @@ RSpec.describe Utils::Analytics do
 
     it "reports all the packages in a single request" do
       expect(described_class).to receive(:write_influx).with([
-        "cask_install,ci=false,on_request=true package=\"foo\",tap_name=\"homebrew/cask\" 123000000000",
-        "cask_install,ci=false,on_request=true package=\"bar\",tap_name=\"homebrew/cask\" 123000000001",
+        "cask_install,ci=false,on_request=true package=\"foo\",tap_name=\"homebrew/cask\" 123",
+        "cask_install,ci=false,on_request=true package=\"bar\",tap_name=\"homebrew/cask\" 124",
       ])
 
       described_class.report_package_events(:cask_install, [
@@ -156,7 +156,7 @@ RSpec.describe Utils::Analytics do
         { package_name: "bar", tap_name: "homebrew/cask", on_request: true, options: "" },
       ])
 
-      expect(lines.map { |line| line.split.last }).to eq(["123000000000", "123000000001"])
+      expect(lines.map { |line| line.split.last }).to eq(["123", "124"])
     end
   end
 
@@ -275,7 +275,7 @@ RSpec.describe Utils::Analytics do
         anything,
         array_including(
           "--data-binary",
-          'formula_install,os=Linux\ [WSL] os_name_and_version="Ubuntu 24.04 LTS [WSL]" 123000000000',
+          'formula_install,os=Linux\ [WSL] os_name_and_version="Ubuntu 24.04 LTS [WSL]" 123',
         ),
       )
 

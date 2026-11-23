@@ -77,17 +77,16 @@ module Utils
                               .map { |k, v| %Q(#{k}="#{v}") }
                               .join(",")
 
-        # InfluxDB merges points with the same tags and timestamp, so keep second precision but give
-        # each event its own nanosecond within that second, even across separate reports.
-        timestamp = [Time.now.to_i * 1_000_000_000, cache.fetch(:last_influx_timestamp, -1) + 1].max
+        # InfluxDB merges points with the same tags and timestamp, so give each event its own second,
+        # even across separate reports. analytics.brew.sh only accepts second precision.
+        timestamp = [Time.now.to_i, cache.fetch(:last_influx_timestamp, -1) + 1].max
         cache[:last_influx_timestamp] = timestamp
         "#{measurement},#{tags_string} #{fields_string} #{timestamp}"
       end
 
       sig { params(lines: T::Array[String]).void }
       def write_influx(lines)
-        # Timestamps are whole seconds written in nanoseconds: see `influx_line`.
-        url = "#{INFLUX_HOST}/api/v2/write?bucket=#{INFLUX_BUCKET}&precision=ns"
+        url = "#{INFLUX_HOST}/api/v2/write?bucket=#{INFLUX_BUCKET}&precision=s"
 
         # Line protocol separates each event with a newline. Put as many events in each request
         # as fit in INFLUX_MAX_BATCH_BYTES: an event larger than that on its own is sent by itself.
