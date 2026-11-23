@@ -80,7 +80,18 @@ module Utils
         curl = Utils::Curl.curl_executable
         if ENV["HOMEBREW_ANALYTICS_DEBUG"]
           # Keep the response and curl's error message so a failure shows why.
-          args = Utils::Curl.curl_args(*args, "--silent", "--fail-with-body", show_output: true)
+          failure_args = if Utils::Curl.curl_version >= Version.new("7.76.0")
+            ["--fail-with-body"]
+          else
+            # `--fail-with-body` needs curl 7.76.0, so print the status after the response instead.
+            # This is a Curl format token, not a Ruby one.
+            # rubocop:disable Style/FormatStringToken
+            ["--write-out", "\nHTTP status: %{http_code}\n"]
+            # rubocop:enable Style/FormatStringToken
+          end
+          # A curlrc can enable `--fail`, which hides the response and which curl before 8.17.0 rejects
+          # alongside `--fail-with-body`.
+          args = Utils::Curl.curl_args(*args, "--silent", "--no-fail", *failure_args, show_output: true)
           puts "#{curl} #{args.join(" ")} \"#{url}\""
           puts Utils.safe_popen_read(curl, *args, url, err: :out)
         else
