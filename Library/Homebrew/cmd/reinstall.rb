@@ -297,12 +297,12 @@ module Homebrew
 
         reinstalled_casks = T.let([], T::Array[Cask::Cask])
         if casks.any?
-          if formulae.empty?
-            download_queue = Homebrew::DownloadQueue.new(pour: true)
-            prefetched_cask_installers = fetch_installers([], [], casks, download_queue:).cask_installers
-          end
-          Utils::Analytics.report_cask_installs(prefetched_cask_installers)
           begin
+            if formulae.empty?
+              download_queue = Homebrew::DownloadQueue.new(pour: true)
+              prefetched_cask_installers = fetch_installers([], [], casks, download_queue:).cask_installers
+            end
+            Utils::Analytics.report_cask_installs(prefetched_cask_installers)
             reinstalled_casks = Cask::Reinstall.reinstall_casks(
               *casks,
               binaries:        args.binaries?,
