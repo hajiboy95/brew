@@ -116,12 +116,10 @@ RSpec.describe FormulaInstaller do
 
     formula_installer = described_class.new(formula)
     begin
-      expect do
-        formula_installer.fetch
-        formula_installer.install
-      end.to output(/Bottle testball_bottle/).to_stderr
-
+      expect { formula_installer.fetch }.to output(/Bottle testball_bottle/).to_stderr
       expect(bottle.cached_download.binread).not_to start_with("corrupt")
+
+      formula_installer.install
       expect(formula).to be_latest_version_installed
       expect(Homebrew).not_to have_failed
     ensure
