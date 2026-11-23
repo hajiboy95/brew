@@ -531,6 +531,7 @@ module Cask
       end
       ::Utils::Analytics.report_cask_installs(missing_cask_installers)
       missing_cask_installers.each(&:install)
+
       return if formula_installers.blank?
 
       Homebrew::Install.perform_preinstall_checks_once
@@ -539,12 +540,11 @@ module Cask
       else
         Homebrew::Install.fetch_formulae(formula_installers)
       end
-      ::Utils::Analytics.report_formula_installs(valid_formula_installers.reject do |formula_installer|
+      missing_formula_installers = valid_formula_installers.reject do |formula_installer|
         formula_installer.formula.any_version_installed? && formula_installer.formula.optlinked?
-      end)
-      valid_formula_installers.each do |formula_installer|
-        next if formula_installer.formula.any_version_installed? && formula_installer.formula.optlinked?
-
+      end
+      ::Utils::Analytics.report_formula_installs(missing_formula_installers)
+      missing_formula_installers.each do |formula_installer|
         formula_installer.install
         formula_installer.finish
       end
