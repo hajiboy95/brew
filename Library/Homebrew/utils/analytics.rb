@@ -78,11 +78,13 @@ module Utils
         require "utils/curl"
 
         curl = Utils::Curl.curl_executable
-        args = Utils::Curl.curl_args(*args, "--silent", "--output", File::NULL, show_error: false)
         if ENV["HOMEBREW_ANALYTICS_DEBUG"]
+          # Keep the response and curl's error message so a failure shows why.
+          args = Utils::Curl.curl_args(*args, "--silent", "--fail-with-body", show_output: true)
           puts "#{curl} #{args.join(" ")} \"#{url}\""
-          puts Utils.safe_popen_read(curl, args: [*args, url])
+          puts Utils.safe_popen_read(curl, *args, url, err: :out)
         else
+          args = Utils::Curl.curl_args(*args, "--silent", "--output", File::NULL, show_error: false)
           pid = spawn curl, *args, url, out: File::NULL, err: File::NULL
           Process.detach(pid)
         end
